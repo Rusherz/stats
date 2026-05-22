@@ -234,6 +234,59 @@ std::vector<GpuStats> read_amd_gpus() {
     return out;
 }
 
+std::vector<GpuStats> read_nvidia_gpus() {
+    std::vector<GpuStats> out;
+    const char* cmd =
+        "nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu "
+        "--format=csv,noheader,nounits 2>/dev/null";
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) return out;
+
+    char buf[512];
+    while (fgets(buf, sizeof(buf), pipe)) {
+        std::string line(buf);
+        if (!line.empty() && line.back() == '\n') line.pop_back();
+        if (line.empty()) continue;
+
+        std::vector<std::string> parts;
+        std::stringstream ss(line);
+        std::string item;
+        while (std::getline(ss, item, ',')) {
+            size_t start = item.find_first_not_of(" \t");
+            size_t end = item.find_last_not_of(" \t");
+            if (start == std::string::npos) {
+                parts.push_back("");
+            } else {
+                parts.push_back(item.substr(start, end - start + 1));
+            }
+        }
+        if (parts.size() < 5) continue;
+
+        GpuStats g;
+        g.card = "gpu" + parts[0];
+
+        try {
+            g.gpu_usage_pct = std::stod(parts[1]);
+        } catch (...) {}
+        try {
+            double used_mib = std::stod(parts[2]);
+            g.vram_used_bytes = static_cast<unsigned long long>(used_mib * 1024.0 * 1024.0);
+        } catch (...) {}
+        try {
+            double total_mib = std::stod(parts[3]);
+            g.vram_total_bytes = static_cast<unsigned long long>(total_mib * 1024.0 * 1024.0);
+        } catch (...) {}
+        try {
+            g.temp_c = std::stod(parts[4]);
+        } catch (...) {}
+
+        out.push_back(std::move(g));
+    }
+
+    pclose(pipe);
+    return out;
+}
+
 std::string human_bytes(unsigned long long bytes) {
     static const char* units[] = {"B", "KiB", "MiB", "GiB", "TiB"};
     double v = static_cast<double>(bytes);
@@ -357,6 +410,7 @@ int main() {
         auto curr_cpu = read_cpu_snapshot();
         auto mem = read_mem_stats();
         auto gpus = read_amd_gpus();
+        if (gpus.empty()) gpus = read_nvidia_gpus();
         auto cpu_temp = read_cpu_temp_c();
 
         clear_screen();
@@ -409,8 +463,8 @@ int main() {
                 metrics.push_back({"VRM", std::nullopt, prefix + "unavailable"});
             }
         } else {
-            metrics.push_back({"GPU", std::nullopt, "no AMD GPU metrics found"});
-            metrics.push_back({"VRM", std::nullopt, "no AMD VRAM metrics found"});
+            metrics.push_back({"GPU", std::nullopt, "no GPU metrics found"});
+            metrics.push_back({"VRM", std::nullopt, "no VRAM metrics found"});
         }
 
         render_vertical_bars(metrics);

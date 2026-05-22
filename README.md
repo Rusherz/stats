@@ -1,6 +1,6 @@
 # stats
 
-Small terminal monitor for AMD/Linux systems showing:
+Small terminal monitor for Linux systems (AMD + NVIDIA) showing:
 
 - CPU usage
 - Memory usage
@@ -14,7 +14,7 @@ Small terminal monitor for AMD/Linux systems showing:
 ## Requirements
 
 - Linux
-- AMD GPU exposing `/sys/class/drm/card*/device/*` metrics
+- AMD GPU exposing `/sys/class/drm/card*/device/*` metrics, or NVIDIA GPU with `nvidia-smi` available
 - C++17 compiler (`g++`)
 - `make`
 
@@ -36,3 +36,4 @@ Press `Ctrl+C` to exit.
 
 - Data sources: `/proc` and `/sys` (no external libraries required)
 - GPU/VRAM/temperature fields show `unavailable` if your kernel/driver does not expose a metric
+- NVIDIA metrics are read from `nvidia-smi`; AMD metrics are read from `/sys/class/drm`
