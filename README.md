@@ -9,6 +9,8 @@ Small terminal monitor for AMD/Linux systems showing:
 - CPU temperature
 - GPU temperature
 
+![astats screenshot](assets/screenshot.png)
+
 ## Requirements
 
 - Linux
